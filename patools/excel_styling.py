@@ -73,11 +73,11 @@ def get(workbook: openpyxl.Workbook) -> pandas.DataFrame:
             dataset_styles.loc[table_idx] = [''] * len(dataset_styles.columns)
             row_height = worksheet.row_dimensions[row_idx + 1].height
             height_json = style_to_json({'height': row_height})
-            dataset_styles.loc[table_idx, 0] = 'Стили'
-            dataset_styles.loc[table_idx, 1] = 'Ячейки'
-            dataset_styles.loc[table_idx, 2] = height_json
-            dataset_styles.loc[table_idx, 3] = worksheet.title
-            dataset_styles.loc[table_idx, 4] = row_idx + 1
+            dataset_styles.loc[table_idx].iloc[0] = 'Стили'
+            dataset_styles.loc[table_idx].iloc[1] = 'Ячейки'
+            dataset_styles.loc[table_idx].iloc[2] = height_json
+            dataset_styles.loc[table_idx].iloc[3] = worksheet.title
+            dataset_styles.loc[table_idx].iloc[4] = row_idx + 1
             column_idx = 4
             for col in worksheet.iter_cols(1, worksheet.max_column):
                 column_idx += 1
@@ -104,7 +104,7 @@ def get(workbook: openpyxl.Workbook) -> pandas.DataFrame:
                     'named_style': named_style,
                     'cell_style': cell_style
                 })
-                dataset_styles.loc[table_idx, column_idx] = cell_style_json
+                dataset_styles.loc[table_idx].iloc[column_idx] = cell_style_json
     return dataset_styles
 
 
@@ -116,26 +116,26 @@ def apply(styles: pandas.DataFrame, data: pandas.DataFrame) -> openpyxl.Workbook
     def _apply(workbook: openpyxl.Workbook, dataset: pandas.DataFrame):
         dataset_columns = dataset.shape[1]
         for row_idx in range(dataset.shape[0]):
-            seg_data = dataset.loc[row_idx, 0]
-            table_section = dataset.loc[row_idx, 1]
+            seg_data = dataset.loc[row_idx].iloc[0]
+            table_section = dataset.loc[row_idx].iloc[1]
 
-            worksheet_name = dataset.loc[row_idx, 3]
+            worksheet_name = dataset.loc[row_idx].iloc[3]
             if worksheet_name not in workbook.sheetnames:
                 worksheet = workbook.create_sheet(worksheet_name)
             else:
                 worksheet = workbook.worksheets[workbook.sheetnames.index(worksheet_name)]
-            row_number = int(dataset.loc[row_idx, 4])
+            row_number = int(dataset.loc[row_idx].iloc[4])
 
             if seg_data == 'Таблица' and table_section == 'Таблица':
                 for col_idx in range(5, dataset_columns):
                     col_number = int(dataset.columns[col_idx])
                     cell = worksheet.cell(row=row_number, column=col_number)
-                    cell_value = dataset.loc[row_idx, col_idx]
+                    cell_value = dataset.loc[row_idx].iloc[col_idx]
 
                     if isinstance(cell, Cell):
                         cell.value = cell_value
             elif seg_data == 'Стили' and table_section == 'Ячейки':
-                row_style_json = dataset.loc[row_idx, 2]
+                row_style_json = dataset.loc[row_idx].iloc[2]
                 row_style_data = json.loads(row_style_json)
 
                 row_height = row_style_data['height']
@@ -144,7 +144,7 @@ def apply(styles: pandas.DataFrame, data: pandas.DataFrame) -> openpyxl.Workbook
                 worksheet.row_dimensions[row_number].height = float(row_height)
 
                 for col_idx in range(5, dataset_columns):
-                    full_style_json = dataset.loc[row_idx, col_idx]
+                    full_style_json = dataset.loc[row_idx].iloc[col_idx]
                     if pandas.isna(full_style_json):
                         continue
                     full_style_data = json.loads(full_style_json)
