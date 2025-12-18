@@ -59,28 +59,23 @@ def get(workbook: openpyxl.Workbook) -> pandas.DataFrame:
     """
     Returns a pandas.DataFrame with styles from an openpyxl.Workbook.
     """
-
     if not isinstance(workbook, openpyxl.Workbook):
         raise ValueError('workbook must be an instance of openpyxl.Workbook')
 
-    max_worksheets_columns = max(worksheet.max_column for worksheet in workbook.worksheets)
-    numbers_columns = list(map(str, range(1, max_worksheets_columns + 1)))
-    dataset_styles = pandas.DataFrame(columns=['Сегмент данных', 'Секция таблицы', 'Стиль строки', 'Лист', 'Номер строки'] + numbers_columns)
-
+    styles = []
     for worksheet in workbook.worksheets:
         for row_idx in range(worksheet.max_row):
-            table_idx = len(dataset_styles.index)  # dataset_styles.shape[0]
-            dataset_styles.loc[table_idx] = [''] * len(dataset_styles.columns)
             row_height = worksheet.row_dimensions[row_idx + 1].height
-            height_json = style_to_json({'height': row_height})
-            dataset_styles.loc[table_idx].iloc[0] = 'Стили'
-            dataset_styles.loc[table_idx].iloc[1] = 'Ячейки'
-            dataset_styles.loc[table_idx].iloc[2] = height_json
-            dataset_styles.loc[table_idx].iloc[3] = worksheet.title
-            dataset_styles.loc[table_idx].iloc[4] = row_idx + 1
-            column_idx = 4
+            row = {
+                'Сегмент данных': 'Стили',
+                'Секция таблицы': 'Ячейки',
+                'Стиль строки': style_to_json({'height': row_height}),
+                'Лист': worksheet.title,
+                'Номер строки': row_idx + 1
+            }
+            column_nm = 0
             for col in worksheet.iter_cols(1, worksheet.max_column):
-                column_idx += 1
+                column_nm += 1
                 cell = col[row_idx]
                 merged_cells_range = None
                 if isinstance(cell, Cell):
@@ -98,14 +93,15 @@ def get(workbook: openpyxl.Workbook) -> pandas.DataFrame:
                 named_style.pop('_wb', None)
 
                 cell_style = get_cell_style(cell, workbook.named_styles[0])  # Стиль заданный для самой ячейки
-                cell_style_json = style_to_json({
+                row[str(column_nm)] = style_to_json({
                     'merged_cells_range': merged_cells_range,
                     'column_width': column_width,
                     'named_style': named_style,
                     'cell_style': cell_style
                 })
-                dataset_styles.loc[table_idx].iloc[column_idx] = cell_style_json
-    return dataset_styles
+            styles.append(row)
+
+    return pandas.DataFrame(styles)
 
 
 def apply(styles: pandas.DataFrame, data: pandas.DataFrame) -> openpyxl.Workbook:
